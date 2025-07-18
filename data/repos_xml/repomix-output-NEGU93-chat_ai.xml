@@ -1,0 +1,907 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+The content has been processed where security check has been disabled.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Security check has been disabled - content may contain sensitive information
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+api_key_manager.py
+app.py
+main.py
+models.py
+readme.md
+requirements.txt
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+.env
+**/__pycache__/
+</file>
+
+<file path="api_key_manager.py">
+# api_key_manager.py
+import streamlit as st
+import os
+from app import run_app
+
+
+def initialize_session_state():
+    """Initialize session state variables if they don't exist"""
+    defaults = {"openai_key": "", "anthropic_key": "", "gemini_key": ""}
+
+    for key, default_value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+
+
+def display_api_key_info():
+    """Display information about API key setup"""
+    st.markdown("# 🔑 API Key Setup")
+    st.markdown(
+        """
+        Welcome to Chat AI! To get started, please provide your API keys below.
+        
+        **At least one API key is required to use the application.**
+
+        ### How to get your API keys:
+        - **OpenAI**: Visit https://platform.openai.com/api-keys (Required for Speech-to-text)
+        - **Anthropic**: Visit https://console.anthropic.com/
+        - **Google Gemini**: Visit https://ai.google.dev/gemini-api
+        """
+    )
+
+    with st.expander("🔒 Privacy & Security", expanded=False):
+        st.markdown("""
+        Your API keys are:
+        - Stored only in your browser session
+        - Not saved to any files or databases
+        - Automatically cleared when you close the browser
+        - Unique to your session only
+        """)
+
+
+def render_api_key_inputs():
+    """Render API key input fields and return the values"""
+    st.markdown("### Enter your API keys:")
+
+    openai_key = st.text_input(
+        "OpenAI API Key",
+        type="password",
+        value=st.session_state.openai_key,
+        help="Required for Speech-to-text functionality",
+        placeholder="sk-...",
+    )
+
+    anthropic_key = st.text_input(
+        "Anthropic API Key",
+        type="password",
+        value=st.session_state.anthropic_key,
+        help="For Claude models",
+        placeholder="sk-ant-...",
+    )
+
+    gemini_key = st.text_input(
+        "Gemini API Key",
+        type="password",
+        value=st.session_state.gemini_key,
+        help="For Google Gemini models",
+        placeholder="AI...",
+    )
+
+    return openai_key, anthropic_key, gemini_key
+
+
+def validate_api_keys(openai_key, anthropic_key, gemini_key):
+    """Validate that at least one API key is provided"""
+    keys = [openai_key.strip(), anthropic_key.strip(), gemini_key.strip()]
+    return any(keys)
+
+
+def save_api_keys(openai_key, anthropic_key, gemini_key):
+    """Save API keys to session state and environment variables"""
+    # Clean and store keys in session state
+    st.session_state.openai_key = openai_key.strip()
+    st.session_state.anthropic_key = anthropic_key.strip()
+    st.session_state.gemini_key = gemini_key.strip()
+
+    # Set environment variables for the session (only if not empty)
+    if st.session_state.openai_key:
+        os.environ["OPENAI_API_KEY"] = st.session_state.openai_key
+    elif "OPENAI_API_KEY" in os.environ:
+        # Clear from environment if empty
+        del os.environ["OPENAI_API_KEY"]
+
+    if st.session_state.anthropic_key:
+        os.environ["ANTHROPIC_API_KEY"] = st.session_state.anthropic_key
+    elif "ANTHROPIC_API_KEY" in os.environ:
+        del os.environ["ANTHROPIC_API_KEY"]
+
+    if st.session_state.gemini_key:
+        os.environ["GOOGLE_API_KEY"] = st.session_state.gemini_key
+    elif "GOOGLE_API_KEY" in os.environ:
+        del os.environ["GOOGLE_API_KEY"]
+
+    st.success("✅ API keys saved successfully!")
+    st.rerun()
+
+
+def display_api_key_status():
+    """Display current API key status in sidebar"""
+    st.markdown("### 🔑 API Key Status")
+
+    active_keys = []
+
+    if st.session_state.openai_key:
+        st.success("✅ OpenAI")
+        active_keys.append("OpenAI")
+    else:
+        st.info("⚪ OpenAI (Not configured)")
+
+    if st.session_state.anthropic_key:
+        st.success("✅ Anthropic")
+        active_keys.append("Anthropic")
+    else:
+        st.info("⚪ Anthropic (Not configured)")
+
+    if st.session_state.gemini_key:
+        st.success("✅ Gemini")
+        active_keys.append("Gemini")
+    else:
+        st.info("⚪ Gemini (Not configured)")
+
+    if not active_keys:
+        st.error("❌ No API keys configured")
+        return False
+    return True
+
+
+def api_key_setup():
+    """API Key configuration UI"""
+    display_api_key_info()
+
+    with st.sidebar.expander("🔧 API Key Configuration", expanded=True):
+        openai_key, anthropic_key, gemini_key = render_api_key_inputs()
+
+        if st.button("💾 Save Keys", type="primary"):
+            if validate_api_keys(openai_key, anthropic_key, gemini_key):
+                save_api_keys(openai_key, anthropic_key, gemini_key)
+            else:
+                st.error("❌ Please provide at least one API key")
+
+
+def run_main_app():
+    """Run the main chat app"""
+    initialize_session_state()
+
+    st.info(
+        "ℹ️ This is a mini version - no local models are available due to hardware limitations."
+    )
+
+    # Show API key management in sidebar
+    with st.sidebar:
+        has_keys = display_api_key_status()
+
+        if not has_keys:
+            st.warning(
+                "⚠️ Configure at least one API key to use the application"
+            )
+
+    # Always show API key setup
+    api_key_setup()
+
+    st.sidebar.divider()
+
+    # Only run the main app if we have at least one API key
+    if (
+        st.session_state.openai_key
+        or st.session_state.anthropic_key
+        or st.session_state.gemini_key
+    ):
+        run_app()
+    else:
+        st.warning(
+            "⚠️ Please configure at least one API key to start using the application."
+        )
+
+
+def run_app_with_api_keys():
+    """Main function to run the app with API key management"""
+    run_main_app()
+</file>
+
+<file path="app.py">
+import streamlit as st
+from models import get_models_by_provider, get_model, audio2text
+
+
+def run_app():
+    st.markdown("# 🤖 Chat AI - Universal LLM Interface")
+
+    if "prompt" not in st.session_state:
+        st.session_state.prompt = ""
+
+    # Sidebar for model selection
+    st.sidebar.header("Model Selection")
+    providers = get_models_by_provider()
+    if len(providers):
+        provider_name = st.sidebar.selectbox(
+            "Select Provider", providers.keys()
+        )
+        model_name = st.sidebar.selectbox(
+            "Select Model", providers[provider_name]
+        )
+
+        # Only get model if it has changed or is not set
+        if (
+            "model_name" not in st.session_state
+            or st.session_state.model_name != model_name
+        ):
+            st.session_state.model = get_model(model_name)
+            st.session_state.model_name = model_name
+
+        # Chat
+        chat_placeholder = st.container()
+        with chat_placeholder:
+            for message in st.session_state.model.messages[
+                1:
+            ]:  # Skip system message
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+        def submit_prompt():
+            st.session_state.prompt = st.session_state.prompt_widget
+            st.session_state.prompt_widget = ""
+
+        def process_audio():
+            if st.session_state.audio_input is not None:
+                # Convert audio to text
+                audio_text = audio2text(st.session_state.audio_input)
+                st.session_state.prompt = audio_text
+
+        st.text_area(
+            "Enter your prompt here",
+            height=200,
+            key="prompt_widget",
+            on_change=submit_prompt,
+        )
+
+        if "OpenAI" in providers:
+            st.audio_input(
+                "Record your message",
+                key="audio_input",
+                on_change=process_audio,
+            )
+
+        prompt = st.session_state.prompt
+
+        if prompt.strip():
+            with chat_placeholder:
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                with st.chat_message("assistant"):
+                    message_placeholder = st.empty()
+
+                    with st.spinner("Thinking..."):
+                        for chunk in st.session_state.model.chat(
+                            prompt=prompt
+                        ):
+                            message_placeholder.markdown(chunk)
+
+            # Clear the prompt after processing
+            st.session_state.prompt = ""
+
+
+if __name__ == "__main__":
+    run_app()
+</file>
+
+<file path="main.py">
+# main.py - Your new main file for Hugging Face Spaces
+import streamlit as st
+from api_key_manager import run_app_with_api_keys
+
+# Configure Streamlit page
+st.set_page_config(page_title="Chat AI", page_icon="🤖", layout="wide")
+
+# Run the app with API key management
+if __name__ == "__main__":
+    run_app_with_api_keys()
+</file>
+
+<file path="models.py">
+import os
+import shutil
+import subprocess
+from typing import Any, Dict, List, Generator
+from collections import defaultdict
+from dotenv import load_dotenv
+import openai
+
+
+def ensure_ollama_model(model_name="llama3.2", auto_pull=False) -> bool:
+    try:
+        # Check available models
+        result = subprocess.run(
+            ["ollama", "list"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            print("[ollama list] Error:", result.stderr.strip())
+            return False
+
+        available_models = [
+            line.split()[0].split(":")[0].lower()
+            for line in result.stdout.strip().splitlines()[1:]  # skip header
+            if line.strip()
+        ]
+
+        if model_name.lower() in available_models:
+            return True
+
+        if auto_pull:
+            print(f"Model '{model_name}' not found. Attempting to pull...")
+            pull_result = subprocess.run(
+                ["ollama", "pull", model_name], check=True
+            )
+            return pull_result.returncode == 0
+
+        return False
+
+    except FileNotFoundError:
+        print("Ollama is not installed or not in PATH.")
+    except subprocess.CalledProcessError as e:
+        print("Subprocess error:", e)
+    except Exception as e:
+        print("Unknown error:", e)
+
+    return False
+
+
+class AIWrapper:
+    def __init__(self, model_name: str, system_role=None):
+        """Initialize the AI wrapper."""
+        if system_role is None:
+            system_role = (
+                "You are a helpful assistant that responds in markdown"
+            )
+        self.messages = [{"role": "system", "content": system_role}]
+        self.model_name = model_name
+
+    def chat(self, prompt: str) -> Generator:
+        pass
+
+
+class OpenAIProvider(AIWrapper):
+    def __init__(self, model_name: str, system_role=None, **kwargs: Any):
+        """Initialize OpenAI-compatible client."""
+        super().__init__(model_name=model_name, system_role=system_role)
+        self.client = openai.OpenAI(**kwargs)
+
+    def chat(self, prompt: str) -> Generator:
+        """
+        Generate a streaming response from an OpenAI-compatible model.
+
+        Args:
+            prompt (str): The prompt to send.
+
+        Returns:
+            Generator: A stream of completion chunks.
+        """
+        self.messages.append({"role": "user", "content": prompt})
+        stream = self.client.chat.completions.create(
+            model=self.model_name, messages=self.messages, stream=True
+        )
+        result = ""
+        for chunk in stream:
+            result += chunk.choices[0].delta.content or ""
+            yield result
+        self.messages.append({"role": "assistant", "content": result})
+
+
+class OllamaProvider(OpenAIProvider):
+    def __init__(self, model_name: str, system_role=None, **kwargs: Any):
+        """Initialize Ollama client."""
+        if not ensure_ollama_model(model_name, auto_pull=True):
+            raise ValueError(
+                f"Model '{model_name}' is not available in Ollama."
+            )
+        super().__init__(
+            model_name=model_name, system_role=system_role, **kwargs
+        )
+
+
+class AnthropicProvider(AIWrapper):
+    def __init__(self, model_name: str, system_role=None, **kwargs: Any):
+        """Initialize Anthropic (Claude) client."""
+        from anthropic import Anthropic
+
+        super().__init__(model_name=model_name, system_role=system_role)
+        self.client = Anthropic(**kwargs)
+
+    def chat(self, prompt: str) -> Generator:
+        """
+        Generate a streaming response from Claude.
+
+        Args:
+            prompt (str): The input prompt.
+
+        Returns:
+            Generator: A stream of Claude response content.
+        """
+        self.messages.append({"role": "user", "content": prompt})
+        result = self.client.messages.stream(
+            model=self.model_name,
+            system=self.messages[0]["content"],
+            messages=self.messages[1:],
+            max_tokens=1024,
+        )
+        response = ""
+        with result as stream:
+            for text in stream.text_stream:
+                response += text or ""
+                yield response
+        self.messages.append({"role": "assistant", "content": response})
+
+
+class HuggingFaceProvider(AIWrapper):
+    def __init__(self, model_name: str, system_role=None, **kwargs: Any):
+        """Initialize Hugging Face client."""
+        super().__init__(model_name=model_name, system_role=system_role)
+        import torch
+        from transformers import (
+            AutoTokenizer,
+            AutoModelForCausalLM,
+            BitsAndBytesConfig,
+        )
+
+        quant_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # self.streamer = TextStreamer(self.tokenizer)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name, device_map="auto", quantization_config=quant_config
+        )
+
+    def chat(self, prompt: str) -> Generator:
+        """
+        Generate a response from a Hugging Face model.
+
+        Args:
+            prompt (str): The input prompt.
+
+        Returns:
+            Generator: A stream of response content.
+        """
+        self.messages.append({"role": "user", "content": prompt})
+        inputs = self.tokenizer.apply_chat_template(
+            self.messages, return_tensors="pt"
+        ).to("cuda")
+        outputs = self.model.generate(
+            inputs,
+            max_new_tokens=2000,  # streamer=self.streamer
+        )
+
+        new_tokens = outputs[0][inputs.shape[1] :]
+        response = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
+        response = response.replace("assistant", "")
+        self.messages.append({"role": "assistant", "content": response})
+        yield response
+
+
+# Single source of truth for all models - only modify this!
+MODEL_REGISTRY = {
+    # OpenAI Models
+    "gpt-4o": {
+        "provider": "OpenAI",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gpt-4o",
+        "requires_env": "OPENAI_API_KEY",
+        "params": {},
+    },
+    "gpt-4o-mini": {
+        "provider": "OpenAI",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gpt-4o-mini",
+        "requires_env": "OPENAI_API_KEY",
+        "params": {},
+    },
+    "chatgpt": {  # Alias
+        "provider": "OpenAI",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gpt-4o-mini",
+        "requires_env": "OPENAI_API_KEY",
+        "params": {},
+    },
+    # Anthropic Models
+    "claude-3-5-sonnet": {
+        "provider": "Anthropic",
+        "provider_class": "AnthropicProvider",
+        "model_name": "claude-3-5-sonnet-20241022",
+        "requires_env": "ANTHROPIC_API_KEY",
+        "params": {},
+    },
+    "claude-3-haiku": {
+        "provider": "Anthropic",
+        "provider_class": "AnthropicProvider",
+        "model_name": "claude-3-haiku-20240307",
+        "requires_env": "ANTHROPIC_API_KEY",
+        "params": {},
+    },
+    "claude": {  # Alias
+        "provider": "Anthropic",
+        "provider_class": "AnthropicProvider",
+        "model_name": "claude-3-5-sonnet-20241022",
+        "requires_env": "ANTHROPIC_API_KEY",
+        "params": {},
+    },
+    # Google Models
+    "gemini-2.0-flash": {
+        "provider": "Google",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gemini-2.0-flash",
+        "requires_env": "GOOGLE_API_KEY",
+        "params": {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
+        },
+    },
+    "gemini-1.5-pro": {
+        "provider": "Google",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gemini-1.5-pro",
+        "requires_env": "GOOGLE_API_KEY",
+        "params": {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
+        },
+    },
+    "gemini": {  # Alias
+        "provider": "Google",
+        "provider_class": "OpenAIProvider",
+        "model_name": "gemini-2.0-flash",
+        "requires_env": "GOOGLE_API_KEY",
+        "params": {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
+        },
+    },
+    # Ollama Models
+    "llama3.2": {
+        "provider": "Ollama",
+        "provider_class": "OllamaProvider",
+        "model_name": "llama3.2",
+        "requires_env": None,
+        "requires_command": "ollama",
+        "params": {
+            "base_url": "http://localhost:11434/v1",
+            "api_key": "ollama",
+        },
+    },
+    "llama3.1": {
+        "provider": "Ollama",
+        "provider_class": "OllamaProvider",
+        "model_name": "llama3.1",
+        "requires_env": None,
+        "requires_command": "ollama",
+        "params": {
+            "base_url": "http://localhost:11434/v1",
+            "api_key": "ollama",
+        },
+    },
+    # Hugging Face Models
+    "llama-3.1-8b": {
+        "provider": "Hugging Face",
+        "provider_class": "HuggingFaceProvider",
+        "model_name": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "requires_env": "HF_TOKEN",
+        "params": {},
+    },
+}
+
+
+def get_model(model_key: str) -> AIWrapper:
+    """
+    Get AI model instance for the specified model.
+
+    Args:
+        model_key (str): The model key (e.g., "chatgpt", "claude", "gemini").
+
+    Returns:
+        AIWrapper: An instance of the appropriate provider for the model.
+    """
+    if model_key not in MODEL_REGISTRY:
+        raise ValueError(
+            f"Unknown model: {model_key}. Available models: {list(MODEL_REGISTRY.keys())}"
+        )
+
+    config = MODEL_REGISTRY[model_key]
+    provider_class = config["provider_class"]
+
+    # Build parameters
+    params = config["params"].copy()
+    params["model_name"] = config["model_name"]
+
+    # Add API key if needed
+    if config["requires_env"] and config["requires_env"] in os.environ:
+        if config["provider"] == "Google":
+            params["api_key"] = os.environ[config["requires_env"]]
+
+    return globals()[provider_class](**params)
+
+
+def _check_model_availability(config: Dict[str, Any]) -> bool:
+    """Check if a model is available based on its requirements."""
+    # Check environment variable requirement
+    if config.get("requires_env") and not os.getenv(config["requires_env"]):
+        return False
+
+    # Check command requirement (like ollama)
+    if config.get("requires_command"):
+        command = config["requires_command"]
+        if shutil.which(command) is None:
+            return False
+        # For ollama, also check if service is running
+        if command == "ollama":
+            try:
+                result = subprocess.run(
+                    ["ollama", "list"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode != 0:
+                    return False
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                return False
+
+    return True
+
+
+def get_available_models() -> List[str]:
+    """
+    Detect available models based on environment variables and system capabilities.
+
+    Returns:
+        List[str]: List of available model keys.
+    """
+    load_dotenv(override=True)
+
+    available_models = []
+    for model_key, config in MODEL_REGISTRY.items():
+        if _check_model_availability(config):
+            available_models.append(model_key)
+
+    return available_models
+
+
+def get_models_by_provider() -> Dict[str, List[str]]:
+    """
+    Get available models grouped by provider.
+
+    Returns:
+        Dict[str, List[str]]: Dictionary mapping provider names to their available models.
+    """
+    available_models = get_available_models()
+    provider_models = defaultdict(list)
+
+    for model_key in available_models:
+        provider = MODEL_REGISTRY[model_key]["provider"]
+        provider_models[provider].append(model_key)
+
+    return provider_models
+
+
+def get_all_models() -> List[str]:
+    """Get all registered model keys (regardless of availability)."""
+    return list(MODEL_REGISTRY.keys())
+
+
+def get_all_providers() -> List[str]:
+    """Get all registered provider names."""
+    return list(set(config["provider"] for config in MODEL_REGISTRY.values()))
+
+
+def audio2text(audio_input: Any) -> str:
+    """
+    Convert audio input to text using a speech-to-text service.
+
+    Args:
+        audio_input (Any): The audio input to convert.
+
+    Returns:
+        str: The transcribed text.
+    """
+    transcription = openai.OpenAI().audio.transcriptions.create(
+        model="whisper-1", file=audio_input, response_format="text"
+    )
+    return transcription
+</file>
+
+<file path="readme.md">
+# 🤖 Chat AI - Universal LLM Interface
+
+> A production-ready, multi-provider AI chat application with voice integration and unified API abstraction
+
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-orange.svg)
+![Transformers](https://img.shields.io/badge/🤗_Transformers-4.30+-yellow.svg)
+[![Hugging Face Spaces](https://img.shields.io/badge/HuggingFace-Spaces-blue?logo=huggingface)](https://huggingface.co/spaces/NEGU93/chat_ai)
+
+👉 [Try the Chat AI Space](https://huggingface.co/spaces/NEGU93/chat_ai) 🤗
+
+## 🎯 Overview
+
+**Chat AI** is a sophisticated conversational AI platform that abstracts away the complexity of working with multiple Large Language Models (LLMs). Built with modern Python architecture, it provides a unified interface for interacting with various AI providers through a single, elegant web application.
+
+![UI](static/Screenshot.png)
+
+### 🔥 Key Features & Technical Highlights
+
+- **🔄 Multi-Provider Support**: Seamlessly switch between OpenAI GPT, Claude, Gemini, LLAMA, and other models with unified interface abstraction
+- **🎙️ Voice Integration**: Speech-to-text capabilities with real-time transcription
+- **🏠 Local & Cloud**: Support for both cloud APIs and local inference (OLLAMA, Hugging Face downloading the torch model)
+- **🎨 Modern UI**: Clean, responsive interface built with Streamlit
+- **⚡ Performance Optimized**: Efficient model loading, caching, and async processing for non-blocking operations
+- **🔧 Extensible Architecture**: Modular design with secure environment-based configuration for easy provider addition
+
+> [!TIP]
+> Hugging Face implementation downloads and quantizes Torch models directly (optimized for consumer GPUs), using low-level tokenizer encode/decode rather than pipeline methods.
+
+## 🚀 Supported AI Providers
+
+| Provider | Type | Default Model |
+|----------|------|----------|
+| **OpenAI** | Cloud API | gpt-4o-mini |
+| **Claude** | Cloud API | claude-3-7-sonnet-latest |
+| **Gemini** | Cloud API | gemini-2.0-flash |
+| **OLLAMA** | Local | llama3.2 |
+| **Hugging Face** | Local | Meta-Llama-3.1-8B-Instruct |
+
+## 🛠️ Installation & Setup
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/NEGU93/chat_ai.git
+cd chat_ai
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Edit .env with your API keys
+```
+
+### Setup keys
+
+Setup whatever keys you want
+
+- For OpenAI, visit https://openai.com/api/
+- For Anthropic, visit https://console.anthropic.com/
+- For Google, visit https://ai.google.dev/gemini-api
+- For HuggingFace, visit https://huggingface.co
+
+> [!NOTE]
+> OpenAI key is required for Speech-to-text capabilities
+
+> [!NOTE]
+> For the default HuggingFace model, Meta requires you to sign their terms of service. Visit their model instructions page in Hugging Face: https://huggingface.co/meta-llama/Meta-Llama-3.1-8B. It might take some time to validate.
+
+### Environment Configuration
+
+Create a `.env` file in the root directory:
+
+```env
+# Cloud API Keys (use only what you need)
+OPENAI_API_KEY=sk-proj-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+HF_TOKEN=hf_...
+```
+
+### Local Setup (OLLAMA)
+
+For local AI models without API costs:
+
+1. Install [OLLAMA](https://ollama.com/)
+2. Run the application
+3. Enjoy unlimited local AI chat
+
+> [!TIP]
+> No need to download the OLLAMA models, my app will download it automatically (just be patient the first time you run)
+
+## 🎮 Usage
+
+```bash
+# Start the application
+streamlit run app.py
+```
+
+Navigate to `http://localhost:8501` and start chatting with your preferred AI model!
+
+## 📊 Why This Project Matters
+
+This application showcases several important technical skills:
+
+- **AI/ML Integration**: Practical experience with multiple LLM providers
+- **Software Architecture**: Clean, modular design patterns
+- **Full-Stack Development**: Backend AI logic + Frontend web interface
+- **API Management**: Secure handling of multiple API integrations
+- **Performance Engineering**: Optimization for real-time AI interactions
+
+## 🏗️ Architecture
+
+The application follows a clean architecture pattern with clear separation of concerns:
+
+```
+├── models.py          # Implements a unified interface pattern
+├── streamlit_app.py   # Web application frontend and user interaction
+├── requirements.txt   # Python dependencies (soon)
+└── .env               # Environment configuration (API keys)
+```
+
+---
+
+**Built with ❤️ by NEGU93** | [GitHub](https://github.com/NEGU93) | [Connect on LinkedIn](https://www.linkedin.com/in/jose-agustin-barrachina/)
+</file>
+
+<file path="requirements.txt">
+streamlit
+openai
+torch
+transformers
+accelerate
+anthropic
+bitsandbytes
+python-dotenv
+</file>
+
+</files>
